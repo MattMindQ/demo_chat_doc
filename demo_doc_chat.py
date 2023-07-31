@@ -14,6 +14,8 @@ from langchain.memory import ConversationBufferMemory
 from langchain import PromptTemplate
 import pinecone
 import os
+from uuid import uuid4
+from langsmith import Client
 
 
 
@@ -26,6 +28,11 @@ def initialize_environ():
     PINECONE_API_KEY = "cea65e8c-c93d-4d4d-b46b-3b02e1567156"
     PINECONE_ENVIRONMENT = "us-west1-gcp-free"
     PROMPTLAYER_API_KEY = "pl_853b55f84dfbef6697b6f7053af94e5d"
+    unique_id = uuid4().hex[0:8]
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_PROJECT"] = f"Test_doc_chat - {unique_id}"
+    os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
+    os.environ["LANGCHAIN_API_KEY"] = "ls__524807d0a0a24044a3db9bcdf44ab0cd"
 
     return OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT, PROMPTLAYER_API_KEY
 
