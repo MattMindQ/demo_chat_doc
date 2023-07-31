@@ -4,3 +4,4 @@ python-dotenv==1.0.0
 streamlit==1.24.1
 streamlit_chat==0.1.1
 openai==0.27.8
+promptlayer==0.1.94
