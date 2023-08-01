@@ -11,7 +11,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.callbacks import PromptLayerCallbackHandler
 from langchain.chains import RetrievalQAWithSourcesChain, ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
-from langchain import PromptTemplate
+from langchain.prompts import PromptTemplate
 import pinecone
 import os
 from uuid import uuid4
@@ -68,9 +68,27 @@ def create_retriever(vectorstore, number_of_sources):
     )
     return retriever
 
+
+
 def create_chain(llm, retriever):
     """Create RetrievalQAWithSourcesChain"""
-    return RetrievalQAWithSourcesChain.from_chain_type(llm=llm, verbose=True, chain_type="stuff", 
+    prompt_template = """
+    You act as a finance consultant specialized in IFRS and French accounting standards.
+    The following pieces of context are ordered from the most relevant to the least relevant to the question.
+    Use them to answer the question in a professional and detailed manner, with respect to the context and the question.
+    Your answer should be pedagogic, explaining step by step the specific points of the question, from general to specific. 
+    If you don't know the answer, just say that you don't know, don't try to make up an answer.
+    Answer in the question's language
+    Context : 
+    {context}
+
+    Question: {question}
+    Response:"""
+    PROMPT = PromptTemplate(
+        template=prompt_template, input_variables=["context", "question"]
+    )
+    chain_type_kwargs = {"prompt": PROMPT, "document_variable_name": "context"}
+    return RetrievalQAWithSourcesChain.from_chain_type(llm=llm, verbose=True, chain_type="stuff", chain_type_kwargs=chain_type_kwargs, 
                                                        retriever=retriever, return_source_documents=True)
 
 def parse_response(response):
@@ -80,14 +98,22 @@ def parse_response(response):
     for i, doc in enumerate(response["source_documents"], start=1):
         source_doc = doc.metadata['source']
         source_page = doc.metadata['page']
-        # transform the local file path into the corresponding IFRS URL
-        source_url = source_doc.replace("pdf_docs", "https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2023/issued/part-a")
+        # Check the type of source and create the corresponding URL
+        if "pdf_docs" in source_doc:
+            source_url = source_doc.replace("pdf_docs", "https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2023/issued/part-a")
+        elif "international_norms" in source_doc:
+            source_url = source_doc.replace("international_norms", "https://www.eaiinternational.org/public_files/prodyn_img")
+        elif "PCG_1er-janvier-2023" in source_doc:
+            source_url = "https://www.anc.gouv.fr/files/live/sites/anc/files/contributed/ANC/1_Normes_fran%C3%A7aises/Reglements/Recueils/PCG_Janvier2023/PCG_1er-janvier-2023.pdf"
+        else:
+            source_url = source_doc  # Just use the original source_doc if it doesn't match the known types
         # replace backslashes with forward slashes
         source_url = source_url.replace("\\", "/")
         # extract the document name from the URL
         doc_name = source_url.split("/")[-1]
         sources += f"\n{i}. [{doc_name}]({source_url}) \nPage : {source_page}"
     return f"{answer}\n\n{sources}"
+
 
 
 
