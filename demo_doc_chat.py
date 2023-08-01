@@ -34,6 +34,9 @@ def initialize_environ():
     os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
     os.environ["LANGCHAIN_API_KEY"] = "ls__524807d0a0a24044a3db9bcdf44ab0cd"
 
+
+    client = Client()
+
     return OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT, PROMPTLAYER_API_KEY
 
 def initialize_openai_embeddings(OPENAI_API_KEY):
@@ -57,14 +60,13 @@ def initialize_chat_model(OPENAI_API_KEY):
     return ChatOpenAI(verbose=True, callbacks=[PromptLayerCallbackHandler(pl_tags=["QA_IFRS"])], 
                       openai_api_key=OPENAI_API_KEY, model='gpt-3.5-turbo-16k', temperature=0.0)
 
-def create_retriever(vectorstore):
+def create_retriever(vectorstore, number_of_sources):
     """Create retriever"""
     retriever = vectorstore.as_retriever(
     search_type="similarity", 
-    search_kwargs={"k":6}
+    search_kwargs={"k": number_of_sources}
     )
     return retriever
-
 
 def create_chain(llm, retriever):
     """Create RetrievalQAWithSourcesChain"""
@@ -78,36 +80,42 @@ def parse_response(response):
     for i, doc in enumerate(response["source_documents"], start=1):
         source_doc = doc.metadata['source']
         source_page = doc.metadata['page']
-        sources += f"\n{i}\nDoc : {source_doc} \nPage : {source_page}"
+        # transform the local file path into the corresponding IFRS URL
+        source_url = source_doc.replace("pdf_docs", "https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2023/issued/part-a")
+        # replace backslashes with forward slashes
+        source_url = source_url.replace("\\", "/")
+        sources += f"\n{i}. [Source Document]({source_url}) \nPage : {source_page}"
     return f"{answer}\n\n{sources}"
+
+
+
 
 # Main function to run the operations
 
+# Initialization
 OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT, PROMPTLAYER_API_KEY = initialize_environ()
 embed = initialize_openai_embeddings(OPENAI_API_KEY)
 index = initialize_pinecone(PINECONE_API_KEY, PINECONE_ENVIRONMENT)
 vectorstore = create_vectorstore(index, embed)
 llm = initialize_chat_model(OPENAI_API_KEY)
-retriever = create_retriever(vectorstore)
-chain = create_chain(llm, retriever)
 
-# frontend test
-# From here down is all the StreamLit UI.
+# Streamlit UI
 st.header("IFRS Chat Demo")
 
+# Initialize session state
 if "generated" not in st.session_state:
     st.session_state["generated"] = []
 
 if "past" not in st.session_state:
     st.session_state["past"] = []
 
+# User inputs
+number_of_sources = st.number_input("Enter number of sources", min_value=1, max_value=20, value=6, step=1)
+user_input = st.text_input("You: ", key="input")
 
-def get_text():
-    input_text = st.text_input("You: ", key="input")
-    return input_text
-
-
-user_input = get_text()
+# Use user inputs
+retriever = create_retriever(vectorstore, number_of_sources)
+chain = create_chain(llm, retriever)
 
 if user_input:
     output = parse_response(chain(user_input))
@@ -116,9 +124,7 @@ if user_input:
     st.session_state.generated.append(output)
 
 if st.session_state["generated"]:
-
     for i in range(len(st.session_state["generated"]) - 1, -1, -1):
-        message(st.session_state["generated"][i], key=str(i))
-        message(st.session_state["past"][i], is_user=True, key=str(i) + "_user")
+        st.markdown(f"Response: {st.session_state['generated'][i]}", unsafe_allow_html=True)
+        st.markdown(f"User: {st.session_state['past'][i]}", unsafe_allow_html=True)
 
-        
