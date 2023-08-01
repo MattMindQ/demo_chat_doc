@@ -84,8 +84,11 @@ def parse_response(response):
         source_url = source_doc.replace("pdf_docs", "https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2023/issued/part-a")
         # replace backslashes with forward slashes
         source_url = source_url.replace("\\", "/")
-        sources += f"\n{i}. [Source Document]({source_url}) \nPage : {source_page}"
+        # extract the document name from the URL
+        doc_name = source_url.split("/")[-1]
+        sources += f"\n{i}. [{doc_name}]({source_url}) \nPage : {source_page}"
     return f"{answer}\n\n{sources}"
+
 
 
 
