@@ -24,20 +24,19 @@ def initialize_environ():
     """Load environment variables"""
     load_dotenv()
 
-    OPENAI_API_KEY = "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"
-    PINECONE_API_KEY = "cea65e8c-c93d-4d4d-b46b-3b02e1567156"
+    OPENAI_API_KEY = "your api-key"
+    PINECONE_API_KEY = "your api-key"
     PINECONE_ENVIRONMENT = "us-west1-gcp-free"
-    PROMPTLAYER_API_KEY = "pl_853b55f84dfbef6697b6f7053af94e5d"
     unique_id = uuid4().hex[0:8]
     os.environ["LANGCHAIN_TRACING_V2"] = "true"
     os.environ["LANGCHAIN_PROJECT"] = f"Test_doc_chat - {unique_id}"
     os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
-    os.environ["LANGCHAIN_API_KEY"] = "ls__524807d0a0a24044a3db9bcdf44ab0cd"
+    os.environ["LANGCHAIN_API_KEY"] = "your api-key"
 
 
     client = Client()
 
-    return OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT, PROMPTLAYER_API_KEY
+    return OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT
 
 def initialize_openai_embeddings(OPENAI_API_KEY):
     """Initialize OpenAI embeddings"""
